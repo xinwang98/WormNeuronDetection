@@ -5,6 +5,7 @@ from .nms import over_threshold, iou
 from codes.utils import *
 from scipy.io import savemat
 from .nms import nms
+from .seq_dataset import extract_pos_neg_box, extract_box
 
 TP_TRUTH_COLOR = 'red'
 TP_PRED_COLOR = 'yellow'
@@ -30,11 +31,11 @@ def merge(frame, pred_box):
         for i in range(pred_c.shape[0]):
             xmin, xmax, ymin, ymax = pred_c[i]
             patch = frame[xmin: xmax, ymin: ymax, c]
-            scores.append(patch.mean())
-            merge_boxes.append(np.append(pred_c[i], c))
+            scores.append(patch.sum())
+            merge_boxes.append(np.concatenate([np.atleast_1d(c), pred_c[i]]))
     merge_boxes = np.array(merge_boxes)
     scores = np.array(scores)
-    keep = nms(candidate_box=merge_boxes[:, :-1], score=scores, iou_threshold=0.05)
+    keep = nms(candidate_box=merge_boxes[:, 1:], score=scores, iou_threshold=0.05)
     index, = keep.nonzero()
     print(keep.sum())
     matlab_box = to_matlab(merge_boxes[index])
@@ -59,7 +60,6 @@ def to_matlab(boxes):
 
 def draw_box(channel_image, tp_truth_box, tp_pred_box, fp_box, fn_box):
     draw = ImageDraw.Draw(channel_image)
-
     for box in tp_truth_box:
         ymin, ymax, xmin, xmax = box
         draw.rectangle([xmin, ymin, xmax, ymax], outline=TP_TRUTH_COLOR)
@@ -76,12 +76,17 @@ def draw_box(channel_image, tp_truth_box, tp_pred_box, fp_box, fn_box):
 
 
 def show_prediction(frames, ground_truth, frame_idx=14):
-    # ground_truth = ground_truth[frame_idx]
+    pos_box = extract_box(ground_truth[frame_idx])
+    format_gt_boxes = split_seq_channel(pos_box)
 
-    format_gt_boxes = split_channel(ground_truth)[frame_idx]
     pred_box = np.load('./experiments/pred_box_{}.npy'.format(frame_idx))
-    # matlab_box, py_box = merge(frames[frame_idx], pred_box)
-    # savemat('./volume_{}_merge.mat'.format(frame_idx + 1), mdict={'merge': matlab_box})
+    matlab_box, py_box = merge(frames[frame_idx], pred_box)
+    merge_save_root = './experiments/merge'
+    if not os.path.exists(merge_save_root):
+        os.makedirs(merge_save_root)
+    np.save(os.path.join(merge_save_root, 'volume_{}_merge.npy').format(frame_idx), py_box)
+    savemat(os.path.join(merge_save_root, 'volume_{}_merge.mat').format(frame_idx + 1), mdict={'merge': matlab_box})
+
     #
     # merge_root = './experiments/merge'
     # if not os.path.exists(merge_root):

@@ -14,6 +14,7 @@ def format_box(box):
 
 
 def format_gt(gt):
+    # gt: ymin, xmin, dy, dx
     boxes = np.zeros((gt.shape[0], 4))
     boxes[:, 0] = gt[:, 2]
     boxes[:, 1] = gt[:, 2] + gt[:, 4]
@@ -34,3 +35,14 @@ def split_channel(boxes):
             split_boxes[c] = format_gt(boxes[f][ind])
         frame_boxes.append(np.array(split_boxes))
     return frame_boxes
+
+
+def split_seq_channel(boxes):
+    split_boxes = [np.array([]) for _ in range(CHANNEL_NUM)]
+    for c in range(CHANNEL_NUM):
+        ind = np.atleast_1d(np.argwhere(boxes[:, 0] == c).squeeze())
+        if len(ind) == 0:
+            continue
+        split_boxes[c] = format_gt(boxes[ind, :])
+    return split_boxes
+

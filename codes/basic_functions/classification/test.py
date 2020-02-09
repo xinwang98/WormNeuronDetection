@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from codes.basic_functions.classification.dataset import TestSet
 from codes.basic_functions.classification.channel_1_dataset import TestSetC1
+from codes.basic_functions.classification.seq_dataset import SeqTestSet
 from torch.utils.data import DataLoader
 from codes.basic_functions.classification.model import PatchNet
 from .nms import nms
@@ -15,9 +16,10 @@ def test(frames, checkpoint_path, gpu, frame_idx):
     check_point = torch.load(checkpoint_path, map_location='cpu')
     model.load_state_dict(check_point['state_dict'])
     model.eval()
-    dataset = TestSetC1(frames, frame_idx=frame_idx, key_mask_root='./experiments/key_points/gaussian/test', patch_size=9)
+    # dataset = TestSetC1(frames, frame_idx=frame_idx, key_mask_root='./experiments/key_points/gaussian/test', patch_size=9)
     # dataset = TestSet(frames, frame_idx=frame_idx, key_mask_root='./experiments/key_points/gaussian/test',
     #                     patch_size=9)
+    dataset = SeqTestSet(frames, frame_idx=frame_idx, key_mask_root='./experiments/key_points/gaussian/test', patch_size=9)
     data_loader = DataLoader(dataset, batch_size=1024, shuffle=True, pin_memory=True)
     candidate_box = None
     cls_scores = None
@@ -45,7 +47,7 @@ def test(frames, checkpoint_path, gpu, frame_idx):
         score_c = cls_scores[ind]
         format_box = box_c[:, :-1]
         keep = nms(candidate_box=format_box, score=score_c, iou_threshold=0.05)
-        print(keep.sum())
+        # print(keep.sum())
         index, = keep.nonzero()
         pred_boxes[c] = format_box[index, ...]
 
